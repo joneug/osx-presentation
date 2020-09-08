@@ -44,6 +44,7 @@ $(app): $(script) $(icon) makefile
 		<key>CFBundleShortVersionString</key><string>$(VERSION)</string> \
 		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2020 Renaud Blanch</string> \
 		<key>CFBundleIconFile</key><string>presentation</string> \
+		<key>NSCameraUsageDescription</key><string>This app requires camera access to display video feed</string> \
 	</dict> \
 	</plist>" > $@/Contents/Info.plist
 	

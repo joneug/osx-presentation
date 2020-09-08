@@ -252,9 +252,13 @@ try: # missing constants for some bindings
 		AVMediaTypeVideo,
 		AVLayerVideoGravityResizeAspectFill,
 		AVCaptureSessionPreset320x240,
+		AVAuthorizationStatusAuthorized,
+		AVAuthorizationStatusNotDetermined,
 	)
 except:
 	AVPlayerItemStatusReadyToPlay = 1
+	AVAuthorizationStatusNotDetermined = 0
+	AVAuthorizationStatusAuthorized    = 3
 	AVMediaTypeVideo = "vide"
 	AVLayerVideoGravityResizeAspectFill = "AVLayerVideoGravityResizeAspectFill"
 	AVCaptureSessionPreset320x240 = "AVCaptureSessionPreset320x240"
@@ -785,13 +789,27 @@ class VideoView(NSView):
 		self.setAlphaValue_(.75)
 		return self
 	
+#	def grant_(self, result):
+#		NSLog("%@", result)
+	
 	def setHidden_(self, hidden):
 		if hidden == False:
-			device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
-			input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(device, None))
-			if self.session.canAddInput_(input):
-				self.session.addInput_(input)
-				self.session.startRunning()
+			authorization = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo)
+			if authorization == AVAuthorizationStatusAuthorized:
+				device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
+				input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(device, None))
+				if self.session.canAddInput_(input):
+					self.session.addInput_(input)
+					self.session.startRunning()
+			elif authorization == AVAuthorizationStatusNotDetermined:
+#				AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+#					AVMediaTypeVideo,
+#					self.grant_,
+#				)
+				pass
+			else:
+				# should remind to turn on Camera access in Privacy
+				pass
 		else:
 			self.session.stopRunning()
 		return super(VideoView, self).setHidden_(hidden)
