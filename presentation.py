@@ -1808,11 +1808,13 @@ def toggle_fullscreen(fullscreen=None):
 		fullscreen = not _fullscreen
 	
 	if fullscreen != _fullscreen:
-		screens = NSScreen.screens()
+		windows = [presenter_window, presentation_window]
+		screens = list(window.screen() for window in windows)
+		if screens[0] == screens[1]:
+			screens = NSScreen.screens()
 		if _switched_screens:
 			screens = reversed(screens)
-		for window, screen in reversed(list(zip([presenter_window, presentation_window],
-		                                        screens))):
+		for window, screen in reversed(list(zip(windows, screens))):
 			view = window.contentView()
 			if fullscreen:
 				view.enterFullScreenMode_withOptions_(screen, {})
