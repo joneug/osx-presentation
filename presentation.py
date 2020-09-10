@@ -229,6 +229,11 @@ try:
 except:
 	NSColorPanelModeCrayon = 7
 
+try:
+	from AppKit import NSEventSubtypeTabletPoint
+except:
+	NSEventSubtypeTabletPoint = 1
+
 from Quartz import (
 	PDFDocument, PDFAnnotationText, PDFAnnotationLink, PDFActionNamed,
 	kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
@@ -551,8 +556,6 @@ MINIATURES_HEIGHT = origin
 # interaction state
 
 IDLE, BBOX, CLIC, DRAW = range(4)
-state = IDLE
-
 drawings = defaultdict(list)
 
 
@@ -910,6 +913,7 @@ class PresenterView(NSView):
 	miniature_origin = 0
 	page_state = None
 	page = None
+	state = IDLE
 	
 	def draw_miniatures(self):
 		_, (width, height) = self.bounds()
@@ -1003,7 +1007,7 @@ class PresenterView(NSView):
 		NSRectFillUsingOperation(((margin+r*w, 0), (width+MINIATURE_WIDTH-margin+r*w, height)), NSCompositeClear)
 		NSRectFillUsingOperation(((0, 0), (width+MINIATURE_WIDTH, height-1.5*margin-r*h)), NSCompositeClear)
 		
-		if state == DRAW:
+		if self.state == DRAW:
 			return
 		
 		# time
@@ -1320,15 +1324,25 @@ class PresenterView(NSView):
 				refresher.refresh([slide_view])
 		refresher.refresh([self])
 	
+	def _start_path(self, event):
+		self.path = NSBezierPath.bezierPath()
+		self.path.setLineCapStyle_(NSRoundLineCapStyle)
+		self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
+		self.path.moveToPoint_(self.press_location)
+		self.path.lineToPoint_(cursor_location)
+		drawings[current_page].append((self.path, color_chooser.color(), slide_view.cursor_scale*2))
 	
 	def mouseDown_(self, event):
-		global state
-		assert state == IDLE
+		assert self.state == IDLE
 		if hasModifiers(event, NSCommandKeyMask):
-			state = BBOX
+			self.state = BBOX
 		else:
 			self.press_location = self.transform.transformPoint_(event.locationInWindow())
-			state = CLIC
+			if event.subtype() == NSEventSubtypeTabletPoint:
+				self._start_path(event)
+				self.state = DRAW
+			else:
+				self.state = CLIC
 	
 	def mouseMoved_(self, event):
 		global cursor_location
@@ -1336,31 +1350,25 @@ class PresenterView(NSView):
 		slide_view.showCursor()
 	
 	def mouseDragged_(self, event):
-		global state, cursor_location
+		global cursor_location
 		cursor_location = self.transform.transformPoint_(event.locationInWindow())
-		if state == CLIC:
+		if self.state == CLIC:
 			if hypot(cursor_location.x-self.press_location.x, cursor_location.y-self.press_location.y) < 5:
 				return
-			self.path = NSBezierPath.bezierPath()
-			self.path.setLineCapStyle_(NSRoundLineCapStyle)
-			self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
-			self.path.moveToPoint_(self.press_location)
+			self._start_path(event)
+			self.state = DRAW
+		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
-			drawings[current_page].append((self.path, color_chooser.color(), slide_view.cursor_scale*2))
-			state = DRAW
-		elif state == DRAW:
-			self.path.lineToPoint_(cursor_location)
-		elif state == BBOX:
+			self.display()
+		elif self.state == BBOX:
 			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
 			bbox.translateXBy_yBy_(delta.width, delta.height)
-		self.display()
 	
 	def mouseUp_(self, event):
-		global state
-		if state == CLIC:
+		if self.state == CLIC:
 			self.click_(event)
 		slide_view.showCursor()
-		state = IDLE
+		self.state = IDLE
 		refresher.refresh()
 	
 	def rightMouseUp_(self, event):
