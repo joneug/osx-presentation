@@ -686,14 +686,6 @@ class SlideView(NSView):
 		self.setNeedsDisplay_(True)
 
 
-class BlackView(NSView):
-	def drawRect_(self, rect):
-		bounds = self.bounds()
-		NSRectFillUsingOperation(bounds, NSCompositeClear)
-		for path, color, size in drawings["black"]:
-			stroke(path, NSColor.whiteColor(), outline=None, size=size)
-
-
 class MovieView(NSView):
 	def initWithFrame_(self, frame):
 		assert NSView.initWithFrame_(self, frame) == self
@@ -1359,10 +1351,10 @@ class PresenterView(NSView):
 			self.state = DRAW
 		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
-			self.display()
 		elif self.state == BBOX:
 			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
 			bbox.translateXBy_yBy_(delta.width, delta.height)
+		self.display()
 	
 	def mouseUp_(self, event):
 		if self.state == CLIC:
@@ -1740,7 +1732,7 @@ add_subview(presentation_view, slide_view)
 
 # black view
 
-black_view = create_view(BlackView, frame=frame)
+black_view = create_view(NSView, frame=frame)
 add_subview(presentation_view, black_view)
 
 # web view
