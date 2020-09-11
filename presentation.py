@@ -1826,6 +1826,7 @@ def toggle_fullscreen(fullscreen=None):
 				view.enterFullScreenMode_withOptions_(screen, {})
 			else:
 				view.exitFullScreenModeWithOptions_({})
+		presenter_window.makeFirstResponder_(presenter_view)
 	
 	return _fullscreen
 
