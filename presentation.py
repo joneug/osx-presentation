@@ -202,7 +202,7 @@ from AppKit import (
 	NSViewWidthSizable, NSViewHeightSizable, NSViewNotSizable,
 	NSMiniaturizableWindowMask, NSResizableWindowMask, NSTitledWindowMask,
 	NSBackingStoreBuffered,
-	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask,
+	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask, NSShiftKeyMask,
 	NSGraphicsContext,
 	NSCompositeClear, NSCompositeSourceAtop, NSCompositeCopy,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
@@ -552,10 +552,6 @@ for page_number in range(page_count):
 	origin += height + MINIATURE_MARGIN
 MINIATURES_HEIGHT = origin
 
-
-# interaction state
-
-IDLE, BBOX, CLIC, DRAW = range(4)
 drawings = defaultdict(list)
 
 
@@ -883,6 +879,8 @@ class MessageView(NSView):
 
 
 # presenter view #############################################################
+
+IDLE, BBOX, CLIC, MIN_CLIC, MIN_SCROLL, DRAW = range(6)
 
 def hasModifiers(event, mask):
 	return (event.modifierFlags() & mask) == mask
@@ -1301,20 +1299,13 @@ class PresenterView(NSView):
 		
 		refresher.refresh()
 	
-	def scrollWheel_(self, event):
-		if hasModifiers(event, NSCommandKeyMask):
-			point = event.locationInWindow()
-			point = self.transform.transformPoint_(point)
-			self.zoomAt_by_(point, event.deltaY())
-		else:
-			_, (width, height) = self.bounds()
-			ex, ey = event.locationInWindow()
-			if ex > width - MINIATURE_WIDTH: # miniature
-				self.miniature_origin -= event.scrollingDeltaY()
-			elif slide_view.show_spotlight:
-				slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
-				refresher.refresh([slide_view])
-		refresher.refresh([self])
+	
+	# interaction
+
+	def _in_miniatures(self, event):
+		_, (width, _) = self.bounds()
+		ex, _ = event.locationInWindow()
+		return ex > width - MINIATURE_WIDTH
 	
 	def _start_path(self, event):
 		self.path = NSBezierPath.bezierPath()
@@ -1324,60 +1315,7 @@ class PresenterView(NSView):
 		self.path.lineToPoint_(cursor_location)
 		drawings[current_page].append((self.path, color_chooser.color(), slide_view.cursor_scale*2))
 	
-	def mouseDown_(self, event):
-		assert self.state == IDLE
-		if hasModifiers(event, NSCommandKeyMask):
-			self.state = BBOX
-		else:
-			self.press_location = self.transform.transformPoint_(event.locationInWindow())
-			if event.subtype() == NSEventSubtypeTabletPoint:
-				self._start_path(event)
-				self.state = DRAW
-			else:
-				self.state = CLIC
-	
-	def mouseMoved_(self, event):
-		global cursor_location
-		cursor_location = self.transform.transformPoint_(event.locationInWindow())
-		slide_view.showCursor()
-	
-	def mouseDragged_(self, event):
-		global cursor_location
-		cursor_location = self.transform.transformPoint_(event.locationInWindow())
-		if self.state == CLIC:
-			if hypot(cursor_location.x-self.press_location.x, cursor_location.y-self.press_location.y) < 5:
-				return
-			self._start_path(event)
-			self.state = DRAW
-		elif self.state == DRAW:
-			self.path.lineToPoint_(cursor_location)
-		elif self.state == BBOX:
-			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
-			bbox.translateXBy_yBy_(delta.width, delta.height)
-		self.display()
-	
-	def mouseUp_(self, event):
-		if self.state == CLIC:
-			self.click_(event)
-		slide_view.showCursor()
-		self.state = IDLE
-		refresher.refresh()
-	
-	def rightMouseUp_(self, event):
-		prev_page()
-		refresher.refresh()
-	
-	def click_(self, event):
-		_, (width, height) = self.bounds()
-		ex, ey = event.locationInWindow()
-		if ex > width - MINIATURE_WIDTH: # miniature
-			for i in range(page_count):
-				(_, h, o), _ = thumbnails[i]
-				if ey + h + MINIATURE_MARGIN > self.miniature_origin-o+height:
-					break
-			goto_page(i)
-			return
-		
+	def _click(self, event):
 		annotation = self.page.annotationAtPoint_(self.press_location)
 		if annotation is None:
 			next_page()
@@ -1416,6 +1354,73 @@ class PresenterView(NSView):
 		
 		elif url:
 			web_view.mainFrame().loadRequest_(NSURLRequest.requestWithURL_(url))
+
+
+	def scrollWheel_(self, event):
+		if hasModifiers(event, NSCommandKeyMask):
+			point = event.locationInWindow()
+			point = self.transform.transformPoint_(point)
+			self.zoomAt_by_(point, event.deltaY())
+		else:
+			if self._in_miniatures(event):
+				self.miniature_origin -= event.scrollingDeltaY()
+			elif slide_view.show_spotlight:
+				slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
+				refresher.refresh([slide_view])
+		refresher.refresh([self])
+	
+	def mouseDown_(self, event):
+		assert self.state == IDLE
+		self.press_location = self.transform.transformPoint_(event.locationInWindow())
+		if  self._in_miniatures(event):
+			self.state = MIN_CLIC
+		elif hasModifiers(event, NSCommandKeyMask):
+			self.state = BBOX
+		elif hasModifiers(event, NSShiftKeyMask) or event.subtype() == NSEventSubtypeTabletPoint:
+			self._start_path(event)
+			self.state = DRAW
+		else:
+			self.state = CLIC
+	
+	def mouseMoved_(self, event):
+		global cursor_location
+		cursor_location = self.transform.transformPoint_(event.locationInWindow())
+		slide_view.showCursor()
+	
+	def mouseDragged_(self, event):
+		global cursor_location
+		cursor_location = self.transform.transformPoint_(event.locationInWindow())
+		if self.state == MIN_CLIC:
+			if hypot(cursor_location.x-self.press_location.x, cursor_location.y-self.press_location.y) < 5:
+				return
+			self.state = MIN_SCROLL
+		elif self.state == MIN_SCROLL:
+			self.miniature_origin -= event.deltaY()
+		elif self.state == BBOX:
+			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
+			bbox.translateXBy_yBy_(delta.width, delta.height)
+		elif self.state == DRAW:
+			self.path.lineToPoint_(cursor_location)
+		self.display()
+	
+	def mouseUp_(self, event):
+		if self.state == MIN_CLIC:
+			_, (width, height) = self.bounds()
+			ex, ey = event.locationInWindow()
+			for i in range(page_count):
+				(_, h, o), _ = thumbnails[i]
+				if ey + h + MINIATURE_MARGIN > self.miniature_origin-o+height:
+					break
+			goto_page(i)
+		elif self.state == CLIC:
+			self._click(event)
+		slide_view.showCursor()
+		self.state = IDLE
+		refresher.refresh()
+	
+	def rightMouseUp_(self, event):
+		prev_page()
+		refresher.refresh()
 
 
 # application delegate #######################################################
