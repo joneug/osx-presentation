@@ -58,9 +58,7 @@ HELP = [
 	("h",         "hide"),
 	("q",         "quit"),
 	("r",         "relaunch"),
-	(".|b",       "toggle black view"),
-	("w",         "toggle web view"),
-	("m",         "toggle movie view"),
+	("./b/w/m",   "toggle black/board/web/movie view"),
 	("s",         "show slide view"),
 	("v",         "show/hide video view"),
 	("f/F5/⎋",    "toggle/enter/leave fullscreen"),
@@ -682,6 +680,16 @@ class SlideView(NSView):
 		self.setNeedsDisplay_(True)
 
 
+class BoardView(NSView):
+	def initWithFrame_(self, frame):
+		assert NSView.initWithFrame_(self, frame) == self
+		return self
+
+	def drawRect_(self, rect):
+		bounds = self.bounds()
+		width, height = bounds.size
+
+
 class MovieView(NSView):
 	def initWithFrame_(self, frame):
 		assert NSView.initWithFrame_(self, frame) == self
@@ -1271,7 +1279,7 @@ class PresenterView(NSView):
 			actions = {
 				'f':                     toggle_fullscreen,
 				'.':                     toggle_black_view,
-				'b':                     toggle_black_view,
+				'b':                     toggle_board_view,
 				'w':                     toggle_web_view,
 				'm':                     toggle_movie_view,
 				'v':                     toggle_video_view,
@@ -1743,6 +1751,11 @@ add_subview(presentation_view, slide_view)
 black_view = create_view(NSView, frame=frame)
 add_subview(presentation_view, black_view)
 
+# board view
+
+board_view = create_view(BoardView, frame=frame)
+add_subview(presentation_view, board_view)
+
 # web view
 
 web_view = WebView.alloc().initWithFrame_frameName_groupName_(frame, nil, nil)
@@ -1777,13 +1790,14 @@ if show_feed:
 # views visibility
 
 def presentation_show(visible_view=slide_view):
-	for view in [slide_view, black_view, web_view, movie_view]:
+	for view in [slide_view, black_view, board_view, web_view, movie_view]:
 		view.setHidden_(view != visible_view)
 
 def toggle_view(view):
 	presentation_show(view if view.isHidden() else slide_view)
 
 def toggle_black_view(): toggle_view(black_view)
+def toggle_board_view(): toggle_view(board_view)
 def toggle_web_view():   toggle_view(web_view)
 def toggle_movie_view(): toggle_view(movie_view)
 def toggle_video_view():
