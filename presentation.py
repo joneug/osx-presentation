@@ -683,11 +683,13 @@ class SlideView(NSView):
 class BoardView(NSView):
 	def initWithFrame_(self, frame):
 		assert NSView.initWithFrame_(self, frame) == self
+		self.setBackgroundColor_(NSColor.whiteColor())
 		return self
 
 	def drawRect_(self, rect):
-		bounds = self.bounds()
-		width, height = bounds.size
+		NSEraseRect(self.bounds())
+		for path, color, size in drawings["board"]:
+			stroke(path, color, size=size)
 
 
 class MovieView(NSView):
@@ -961,7 +963,10 @@ class PresenterView(NSView):
 		
 		# current
 		self.page = pdf.pageAtIndex_(current_page)
-		page_rect = self.page.boundsForBox_(kPDFDisplayBoxCropBox)
+		if board_view.isHidden():
+			page_rect = self.page.boundsForBox_(kPDFDisplayBoxCropBox)
+		else:
+			page_rect = board_view.bounds()
 		_, (w, h) = page_rect
 		r = current_width/w
 		current_height = h*r
@@ -974,13 +979,20 @@ class PresenterView(NSView):
 		transform.concat()
 		
 		NSGraphicsContext.saveGraphicsState()
-		draw_page(self.page)
 		
-		# links
-		NSColor.blueColor().setFill()
-		for annotation in annotations(self.page):
-			if type(annotation) == PDFAnnotationLink:
-				NSFrameRectWithWidth(annotation.bounds(), .5)
+		if board_view.isHidden():
+			draw_page(self.page)
+		
+			# links
+			NSColor.blueColor().setFill()
+			for annotation in annotations(self.page):
+				if type(annotation) == PDFAnnotationLink:
+					NSFrameRectWithWidth(annotation.bounds(), .5)
+		else:
+			NSEraseRect(page_rect)
+			for path, color, size in drawings["board"]:
+				stroke(path, color, size=size)
+
 		
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
@@ -1006,6 +1018,9 @@ class PresenterView(NSView):
 		NSRectFillUsingOperation(((0, 0), (width+MINIATURE_WIDTH, height-1.5*margin-r*h)), NSCompositeClear)
 		
 		if self.state == DRAW:
+			return
+		
+		if not board_view.isHidden():
 			return
 		
 		# time
@@ -1086,6 +1101,7 @@ class PresenterView(NSView):
 		
 		NSEraseRect(page_rect)
 		page.drawWithBox_(kPDFDisplayBoxCropBox)
+
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 		NSRectFillUsingOperation(page_rect, NSCompositeSourceAtop)
 		
@@ -1173,7 +1189,8 @@ class PresenterView(NSView):
 				if self.target_page:
 					self.target_page = self.target_page[:-1]
 				else:
-					drawings[current_page] = drawings[current_page][:-1]
+					page = current_page if board_view.isHidden() else "board"
+					drawings[page] = drawings[page][:-1]
 			else:
 				self.target_page += c
 		
@@ -1273,7 +1290,8 @@ class PresenterView(NSView):
 				color_chooser.orderOut_(None)
 		
 		elif c == 'e': # erase annotation
-			del drawings[current_page]
+			page = current_page if board_view.isHidden() else "board"
+			del drawings[page]
 		
 		else:
 			actions = {
@@ -1318,13 +1336,13 @@ class PresenterView(NSView):
 		ex, _ = event.locationInWindow()
 		return ex > width - MINIATURE_WIDTH
 	
-	def _start_path(self, event):
+	def _start_path(self, event, page):
 		self.path = NSBezierPath.bezierPath()
 		self.path.setLineCapStyle_(NSRoundLineCapStyle)
 		self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
 		self.path.moveToPoint_(self.press_location)
 		self.path.lineToPoint_(cursor_location)
-		drawings[current_page].append((self.path, color_chooser.color(), slide_view.cursor_scale*2))
+		drawings[page].append((self.path, color_chooser.color(), slide_view.cursor_scale*2))
 	
 	def _click(self, event):
 		annotation = self.page.annotationAtPoint_(self.press_location)
@@ -1387,8 +1405,13 @@ class PresenterView(NSView):
 			self.state = MIN_CLIC
 		elif hasModifiers(event, NSCommandKeyMask):
 			self.state = BBOX
-		elif hasModifiers(event, NSShiftKeyMask) or event.subtype() == NSEventSubtypeTabletPoint:
-			self._start_path(event)
+		elif (
+			hasModifiers(event, NSShiftKeyMask) or
+			event.subtype() == NSEventSubtypeTabletPoint or
+			not board_view.isHidden()
+		):
+			page = current_page if board_view.isHidden() else "board"
+			self._start_path(event, page)
 			self.state = DRAW
 		else:
 			self.state = CLIC
