@@ -1162,7 +1162,10 @@ class PresenterView(NSView):
 					goto_page(int(self.target_page)-1)
 				self.target_page = ''
 			elif c == DEL:
-				self.target_page = self.target_page[:-1]
+				if self.target_page:
+					self.target_page = self.target_page[:-1]
+				else:
+					drawings[current_page] = drawings[current_page][:-1]
 			else:
 				self.target_page += c
 		
