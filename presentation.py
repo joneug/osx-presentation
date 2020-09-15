@@ -1023,9 +1023,6 @@ class PresenterView(NSView):
 		if self.state == DRAW:
 			return
 		
-		if not board_view.isHidden():
-			return
-		
 		# time
 		now = time.time()
 		if now - self.duration_change_time <= 1: # duration changed, display it
@@ -1086,6 +1083,9 @@ class PresenterView(NSView):
 		# thumbnails
 		self.draw_miniatures()
 		
+		if not board_view.isHidden():
+			return
+		
 		# next page
 		if current_page < last_page:
 			page = pdf.pageAtIndex_(current_page+1)
@@ -1104,7 +1104,7 @@ class PresenterView(NSView):
 		
 		NSEraseRect(page_rect)
 		page.drawWithBox_(kPDFDisplayBoxCropBox)
-
+		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 		NSRectFillUsingOperation(page_rect, NSCompositeSourceAtop)
 		
