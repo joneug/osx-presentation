@@ -555,7 +555,8 @@ drawings = defaultdict(list)
 
 # page drawing ###############################################################
 
-bbox = NSAffineTransform.transform()
+slide_bbox = NSAffineTransform.transform()
+board_bbox = NSAffineTransform.transform()
 cursor_location = (0, 0)
 
 color_chooser = NSColorPanel.sharedColorPanel()
@@ -573,8 +574,6 @@ def stroke(path, color=NSColor.blackColor(), outline=NSColor.whiteColor(), size=
 
 
 def draw_page(page):
-	bbox.concat()
-	
 	NSEraseRect(page.boundsForBox_(kPDFDisplayBoxCropBox))
 	page.drawWithBox_(kPDFDisplayBoxCropBox)
 	
@@ -638,6 +637,7 @@ class SlideView(NSView):
 		transform.scaleXBy_yBy_(r, r)
 		transform.translateXBy_yBy_(-w/2., -h/2.)
 		transform.concat()
+		slide_bbox.concat()
 		draw_page(page)
 		
 		x, y = cursor_location
@@ -981,6 +981,8 @@ class PresenterView(NSView):
 		NSGraphicsContext.saveGraphicsState()
 		
 		if board_view.isHidden():
+			bbox = slide_bbox
+			bbox.concat()
 			draw_page(self.page)
 		
 			# links
@@ -989,10 +991,11 @@ class PresenterView(NSView):
 				if type(annotation) == PDFAnnotationLink:
 					NSFrameRectWithWidth(annotation.bounds(), .5)
 		else:
+			bbox = board_bbox
+			bbox.concat()
 			NSEraseRect(page_rect)
 			for path, color, size in drawings["board"]:
 				stroke(path, color, size=size)
-
 		
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
@@ -1141,6 +1144,7 @@ class PresenterView(NSView):
 		return annotation.toolTip() or ""
 	
 	def zoomAt_by_(self, point, percent):
+		bbox = slide_bbox if board_view.isHidden() else board_bbox
 		bbox.translateXBy_yBy_(point.x, point.y)
 		bbox.scaleBy_(exp(percent*0.01))
 		bbox.translateXBy_yBy_(-point.x, -point.y)
@@ -1163,8 +1167,12 @@ class PresenterView(NSView):
 				elif c == '-':
 					self.zoomAt_by_(cursor_location, -5)
 				else: # reset bbox to identity
-					global bbox
-					bbox = NSAffineTransform.transform()
+					if board_view.isHidden():
+						global slide_bbox
+						slide_bbox = NSAffineTransform.transform()
+					else:
+						global board_bbox
+						board_bbox = NSAffineTransform.transform()
 		
 		if hasModifiers(event, NSControlKeyMask | NSCommandKeyMask):
 			c = event.charactersIgnoringModifiers()
@@ -1432,6 +1440,7 @@ class PresenterView(NSView):
 			self.miniature_origin -= event.deltaY()
 		elif self.state == BBOX:
 			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
+			bbox = slide_bbox if board_view.isHidden() else board_bbox
 			bbox.translateXBy_yBy_(delta.width, delta.height)
 		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
