@@ -1011,7 +1011,11 @@ class PresenterView(NSView):
 		# video view proxy
 		if not video_view.isHidden():
 			NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
-			rect = transform_rect(slide_view.transform, video_view.frame())
+			rect = video_view.frame()
+			if board_view.isHidden():
+				rect = transform_rect(slide_view.transform, rect)
+			else:
+				rect = transform_rect(board_bbox, rect)
 			NSRectFillUsingOperation(rect, NSCompositeSourceAtop)
 
 		NSGraphicsContext.restoreGraphicsState()
