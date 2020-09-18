@@ -1087,15 +1087,16 @@ class PresenterView(NSView):
 		# thumbnails
 		self.draw_miniatures()
 		
-		if not board_view.isHidden():
-			return
 		
-		# next page
+		# next page or board
 		if current_page < last_page:
 			page = pdf.pageAtIndex_(current_page+1)
 		else:
 			return
-		page_rect = page.boundsForBox_(kPDFDisplayBoxCropBox)
+		if board_view.isHidden():
+			page_rect = page.boundsForBox_(kPDFDisplayBoxCropBox)
+		else:
+			page_rect = board_view.bounds()
 		_, (w, h) = page_rect
 		r = current_width/2./w
 		
@@ -1107,7 +1108,12 @@ class PresenterView(NSView):
 		transform.concat()
 		
 		NSEraseRect(page_rect)
-		page.drawWithBox_(kPDFDisplayBoxCropBox)
+		if board_view.isHidden():
+			page.drawWithBox_(kPDFDisplayBoxCropBox)
+		else:
+			for path, color, size in drawings["board"]:
+				stroke(path, color, size=size)
+
 		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 		NSRectFillUsingOperation(page_rect, NSCompositeSourceAtop)
