@@ -689,7 +689,7 @@ class BoardView(NSView):
 	def drawRect_(self, rect):
 		NSEraseRect(self.bounds())
 		for path, color, size in drawings["board"]:
-			stroke(path, color, size=size)
+			stroke(path, color, outline=None, size=size)
 
 
 class MovieView(NSView):
@@ -995,7 +995,7 @@ class PresenterView(NSView):
 			bbox.concat()
 			NSEraseRect(page_rect)
 			for path, color, size in drawings["board"]:
-				stroke(path, color, size=size)
+				stroke(path, color, outline=None, size=size)
 		
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
@@ -1112,7 +1112,7 @@ class PresenterView(NSView):
 			page.drawWithBox_(kPDFDisplayBoxCropBox)
 		else:
 			for path, color, size in drawings["board"]:
-				stroke(path, color, size=size)
+				stroke(path, color, outline=None, size=size)
 
 		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
