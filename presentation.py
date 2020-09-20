@@ -689,7 +689,7 @@ class BoardView(NSView):
 	def drawRect_(self, rect):
 		NSEraseRect(self.bounds())
 		for path, color, size in drawings["board"]:
-			stroke(path, color, outline=None, size=size)
+			stroke(path, color, outline=None, size=size*2)
 
 
 class MovieView(NSView):
@@ -995,7 +995,7 @@ class PresenterView(NSView):
 			bbox.concat()
 			NSEraseRect(page_rect)
 			for path, color, size in drawings["board"]:
-				stroke(path, color, outline=None, size=size)
+				stroke(path, color, outline=None, size=size*2)
 		
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
@@ -1112,7 +1112,7 @@ class PresenterView(NSView):
 			page.drawWithBox_(kPDFDisplayBoxCropBox)
 		else:
 			for path, color, size in drawings["board"]:
-				stroke(path, color, outline=None, size=size)
+				stroke(path, color, outline=None, size=size*2)
 
 		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
@@ -1122,7 +1122,8 @@ class PresenterView(NSView):
 		ibbox.invert()
 		ibbox.concat()
 		NSColor.grayColor().setFill()
-		NSFrameRect(page_rect)
+		_, s = bbox.transformSize_((0, 2))
+		NSFrameRectWithWidth(page_rect, s)
 		NSGraphicsContext.restoreGraphicsState()
 	
 	
@@ -1425,7 +1426,7 @@ class PresenterView(NSView):
 			self.state = BBOX
 		elif (
 			hasModifiers(event, NSShiftKeyMask) or
-			event.subtype() == NSEventSubtypeTabletPoint or
+#			event.subtype() == NSEventSubtypeTabletPoint or
 			not board_view.isHidden()
 		):
 			page = current_page if board_view.isHidden() else "board"
