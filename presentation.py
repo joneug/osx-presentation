@@ -204,7 +204,7 @@ from AppKit import (
 	NSGraphicsContext,
 	NSCompositeClear, NSCompositeSourceAtop, NSCompositeCopy,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
-	NSRect, NSZeroRect, NSColor,
+	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSColor,
 	NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
 	NSStrokeColorAttributeName, NSStrokeWidthAttributeName,
 	NSUpArrowFunctionKey, NSLeftArrowFunctionKey,
@@ -605,9 +605,6 @@ def draw_page(page):
 		poster.drawInRect_fromRect_operation_fraction_(
 			bounds, NSZeroRect, NSCompositeCopy, 1.
 		)
-	
-	for path, color, size in drawings[current_page]:
-		stroke(path, color, size=size)
 
 
 # presentation ###############################################################
@@ -639,6 +636,8 @@ class SlideView(NSView):
 		transform.concat()
 		slide_bbox.concat()
 		draw_page(page)
+		for path, color, size in drawings[current_page]:
+			stroke(path, color, size=size)
 		
 		x, y = cursor_location
 		if self.show_spotlight:
@@ -689,7 +688,7 @@ class BoardView(NSView):
 	def drawRect_(self, rect):
 		NSEraseRect(self.bounds())
 		for path, color, size in drawings["board"]:
-			stroke(path, color, outline=None, size=size*2)
+			stroke(path, color, outline=None, size=size)
 
 
 class MovieView(NSView):
@@ -890,7 +889,7 @@ class MessageView(NSView):
 
 # presenter view #############################################################
 
-IDLE, BBOX, CLIC, MIN_CLIC, MIN_SCROLL, DRAW = range(6)
+IDLE, BBOX, SELECT, CLIC, MIN_CLIC, MIN_SCROLL, DRAW = range(7)
 
 def hasModifiers(event, mask):
 	return (event.modifierFlags() & mask) == mask
@@ -914,6 +913,9 @@ class PresenterView(NSView):
 	page_state = None
 	page = None
 	state = IDLE
+	selection_rect = NSZeroRect
+	selection = []
+	
 	
 	def draw_miniatures(self):
 		_, (width, height) = self.bounds()
@@ -965,8 +967,10 @@ class PresenterView(NSView):
 		self.page = pdf.pageAtIndex_(current_page)
 		if board_view.isHidden():
 			page_rect = self.page.boundsForBox_(kPDFDisplayBoxCropBox)
+			page = current_page
 		else:
 			page_rect = board_view.bounds()
+			page = "board"
 		_, (w, h) = page_rect
 		r = current_width/w
 		current_height = h*r
@@ -980,7 +984,11 @@ class PresenterView(NSView):
 		
 		NSGraphicsContext.saveGraphicsState()
 		
-		if board_view.isHidden():
+		if page == "board":
+			bbox = board_bbox
+			bbox.concat()
+			NSEraseRect(page_rect)
+		else:
 			bbox = slide_bbox
 			bbox.concat()
 			draw_page(self.page)
@@ -990,17 +998,22 @@ class PresenterView(NSView):
 			for annotation in annotations(self.page):
 				if type(annotation) == PDFAnnotationLink:
 					NSFrameRectWithWidth(annotation.bounds(), .5)
-		else:
-			bbox = board_bbox
-			bbox.concat()
-			NSEraseRect(page_rect)
-			for path, color, size in drawings["board"]:
-				stroke(path, color, outline=None, size=size*2)
-		
+
+		for path, color, size in drawings[page]:
+			stroke(
+				path, color,
+				outline=None if (path, color, size) not in self.selection else NSColor.yellowColor(),
+				size=size
+			)
+
 		self.transform = transform
 		self.transform.prependTransform_(bbox)
 		self.resetCursorRects()
 		self.transform.invert()
+
+		_, s = self.transform.transformSize_((0, 1))
+		NSColor.grayColor().setFill()
+		NSFrameRectWithWidth(self.selection_rect, s)
 		
 		NSGraphicsContext.restoreGraphicsState()
 		
@@ -1012,10 +1025,10 @@ class PresenterView(NSView):
 		if not video_view.isHidden():
 			NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
 			rect = video_view.frame()
-			if board_view.isHidden():
-				rect = transform_rect(slide_view.transform, rect)
-			else:
+			if page == "board":
 				rect = transform_rect(board_bbox, rect)
+			else:
+				rect = transform_rect(slide_view.transform, rect)
 			NSRectFillUsingOperation(rect, NSCompositeSourceAtop)
 
 		NSGraphicsContext.restoreGraphicsState()
@@ -1090,13 +1103,14 @@ class PresenterView(NSView):
 		
 		# next page or board
 		if current_page < last_page:
-			page = pdf.pageAtIndex_(current_page+1)
+			next_page = pdf.pageAtIndex_(current_page+1)
 		else:
 			return
-		if board_view.isHidden():
-			page_rect = page.boundsForBox_(kPDFDisplayBoxCropBox)
-		else:
+		
+		if page == "board":
 			page_rect = board_view.bounds()
+		else:
+			page_rect = next_page.boundsForBox_(kPDFDisplayBoxCropBox)
 		_, (w, h) = page_rect
 		r = current_width/2./w
 		
@@ -1108,11 +1122,11 @@ class PresenterView(NSView):
 		transform.concat()
 		
 		NSEraseRect(page_rect)
-		if board_view.isHidden():
-			page.drawWithBox_(kPDFDisplayBoxCropBox)
-		else:
+		if page == "board":
 			for path, color, size in drawings["board"]:
-				stroke(path, color, outline=None, size=size*2)
+				stroke(path, color, outline=None, size=size)
+		else:
+			next_page.drawWithBox_(kPDFDisplayBoxCropBox)
 
 		
 		NSColor.colorWithCalibratedWhite_alpha_(.25, .25).setFill()
@@ -1132,7 +1146,7 @@ class PresenterView(NSView):
 		if self.page is None:
 			return
 		
-		annotation_state = (self.transform.transformStruct(), current_page)
+		annotation_state = (self.transform.transformStruct(), current_page, board_view.isHidden())
 		if self.annotation_state == annotation_state:
 			return
 		self.annotation_state = annotation_state
@@ -1140,6 +1154,9 @@ class PresenterView(NSView):
 		# reset cursor rects and tooltips
 		self.discardCursorRects()
 		self.removeAllToolTips()
+		
+		if not board_view.isHidden():
+			return
 		
 		for i, annotation in enumerate(annotations(self.page)):
 			if type(annotation) != PDFAnnotationLink:
@@ -1209,7 +1226,15 @@ class PresenterView(NSView):
 					self.target_page = self.target_page[:-1]
 				else:
 					page = current_page if board_view.isHidden() else "board"
-					drawings[page] = drawings[page][:-1]
+					if self.selection:
+						for path in self.selection:
+							try:
+								drawings[page].remove(path)
+							except ValueError:
+								continue
+						self.selection = []
+					else:
+						drawings[page] = drawings[page][:-1]
 			else:
 				self.target_page += c
 		
@@ -1310,7 +1335,15 @@ class PresenterView(NSView):
 		
 		elif c == 'e': # erase annotation
 			page = current_page if board_view.isHidden() else "board"
-			del drawings[page]
+			if self.selection:
+				for path in self.selection:
+					try:
+						drawings[page].remove(path)
+					except ValueError:
+						continue
+				self.selection = []
+			else:
+				del drawings[page]
 		
 		else:
 			actions = {
@@ -1361,7 +1394,10 @@ class PresenterView(NSView):
 		self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
 		self.path.moveToPoint_(self.press_location)
 		self.path.lineToPoint_(cursor_location)
-		drawings[page].append((self.path, color_chooser.color(), slide_view.cursor_scale*2))
+		drawings[page].append((
+			self.path, color_chooser.color(),
+			slide_view.cursor_scale*(3 if page == "board" else 1)
+		))
 	
 	def _click(self, event):
 		annotation = self.page.annotationAtPoint_(self.press_location)
@@ -1422,8 +1458,10 @@ class PresenterView(NSView):
 		self.press_location = self.transform.transformPoint_(event.locationInWindow())
 		if  self._in_miniatures(event):
 			self.state = MIN_CLIC
-		elif hasModifiers(event, NSCommandKeyMask):
+		elif hasModifiers(event, NSCommandKeyMask): # editing bbox
 			self.state = BBOX
+		elif hasModifiers(event, NSAlternateKeyMask): # starting a selection
+			self.state = SELECT
 		elif (
 			hasModifiers(event, NSShiftKeyMask) or
 #			event.subtype() == NSEventSubtypeTabletPoint or
@@ -1449,6 +1487,8 @@ class PresenterView(NSView):
 			self.state = MIN_SCROLL
 		elif self.state == MIN_SCROLL:
 			self.miniature_origin -= event.deltaY()
+		elif self.state == SELECT:
+			self.selection_rect = NSUnionRect((self.press_location, (1, 1)), (cursor_location, (1, 1)))
 		elif self.state == BBOX:
 			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
 			bbox = slide_bbox if board_view.isHidden() else board_bbox
@@ -1468,6 +1508,13 @@ class PresenterView(NSView):
 			goto_page(i)
 		elif self.state == CLIC:
 			self._click(event)
+		elif self.state == SELECT:
+			self.selection = [
+				(path, color, size)
+				for path, color, size in drawings[current_page if board_view.isHidden() else "board"]
+				if NSContainsRect(self.selection_rect, path.bounds())
+			]
+			self.selection_rect = NSZeroRect
 		slide_view.showCursor()
 		self.state = IDLE
 		refresher.refresh()
