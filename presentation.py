@@ -204,7 +204,7 @@ from AppKit import (
 	NSGraphicsContext,
 	NSCompositeClear, NSCompositeSourceAtop, NSCompositeCopy,
 	NSRectFillUsingOperation, NSFrameRectWithWidth, NSFrameRect, NSEraseRect,
-	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSColor,
+	NSRect, NSZeroRect, NSUnionRect, NSContainsRect, NSPointInRect, NSColor,
 	NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
 	NSStrokeColorAttributeName, NSStrokeWidthAttributeName,
 	NSUpArrowFunctionKey, NSLeftArrowFunctionKey,
@@ -1512,7 +1512,7 @@ class PresenterView(NSView):
 			self.selection = [
 				(path, color, size)
 				for path, color, size in drawings[current_page if board_view.isHidden() else "board"]
-				if NSContainsRect(self.selection_rect, path.bounds())
+				if NSContainsRect(self.selection_rect, path.bounds()) or NSPointInRect(path.currentPoint(), self.selection_rect)
 			]
 			self.selection_rect = NSZeroRect
 		slide_view.showCursor()
