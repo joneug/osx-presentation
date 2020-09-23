@@ -1383,12 +1383,12 @@ class PresenterView(NSView):
 	
 	# interaction
 
-	def _in_miniatures(self, event):
+	def inMiniaturesAt_(self, point):
 		_, (width, _) = self.bounds()
-		ex, _ = event.locationInWindow()
+		ex, _ = point
 		return ex > width - MINIATURE_WIDTH
 	
-	def _start_path(self, event, page):
+	def startPathOnPage_(self, page):
 		self.path = NSBezierPath.bezierPath()
 		self.path.setLineCapStyle_(NSRoundLineCapStyle)
 		self.path.setLineJoinStyle_(NSRoundLineJoinStyle)
@@ -1399,7 +1399,7 @@ class PresenterView(NSView):
 			slide_view.cursor_scale*(3 if page == "board" else 1)
 		))
 	
-	def _click(self, event):
+	def click(self):
 		annotation = self.page.annotationAtPoint_(self.press_location)
 		if annotation is None:
 			next_page()
@@ -1441,12 +1441,11 @@ class PresenterView(NSView):
 
 
 	def scrollWheel_(self, event):
+		location = event.locationInWindow()
 		if hasModifiers(event, NSCommandKeyMask):
-			point = event.locationInWindow()
-			point = self.transform.transformPoint_(point)
-			self.zoomAt_by_(point, event.deltaY())
+			self.zoomAt_by_(self.transform.transformPoint_(location), event.deltaY())
 		else:
-			if self._in_miniatures(event):
+			if self.inMiniaturesAt_(location):
 				self.miniature_origin -= event.scrollingDeltaY()
 			elif slide_view.show_spotlight:
 				slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
@@ -1455,8 +1454,9 @@ class PresenterView(NSView):
 	
 	def mouseDown_(self, event):
 		assert self.state == IDLE
-		self.press_location = self.transform.transformPoint_(event.locationInWindow())
-		if  self._in_miniatures(event):
+		location = event.locationInWindow()
+		self.press_location = self.transform.transformPoint_(location)
+		if self.inMiniaturesAt_(location):
 			self.state = MIN_CLIC
 		elif hasModifiers(event, NSCommandKeyMask): # editing bbox
 			self.state = BBOX
@@ -1468,7 +1468,7 @@ class PresenterView(NSView):
 			not board_view.isHidden()
 		):
 			page = current_page if board_view.isHidden() else "board"
-			self._start_path(event, page)
+			self.startPathOnPage_(page)
 			self.state = DRAW
 		else:
 			self.state = CLIC
@@ -1507,7 +1507,7 @@ class PresenterView(NSView):
 					break
 			goto_page(i)
 		elif self.state == CLIC:
-			self._click(event)
+			self.click()
 		elif self.state == SELECT:
 			self.selection = [
 				(path, color, size)
