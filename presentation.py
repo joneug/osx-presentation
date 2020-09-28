@@ -1446,10 +1446,22 @@ class PresenterView(NSView):
 			self.zoomAt_by_(self.transform.transformPoint_(location), event.deltaY())
 		else:
 			if self.inMiniaturesAt_(location):
-				self.miniature_origin -= event.scrollingDeltaY()
+				if not event.phase(): # mouse vs. gesture
+					(_, h, _), _ = thumbnails[current_page]
+					h += MINIATURE_MARGIN
+					if event.scrollingDeltaY() < 0:
+						h = -h
+					self.miniature_origin -= h
+				else:
+					self.miniature_origin -= event.scrollingDeltaY()
 			elif slide_view.show_spotlight:
 				slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
 				refresher.refresh([slide_view])
+			else:
+				if event.scrollingDeltaY() < 0:
+					next_page()
+				else:
+					prev_page()
 		refresher.refresh([self])
 	
 	def mouseDown_(self, event):
@@ -1464,7 +1476,7 @@ class PresenterView(NSView):
 			self.state = SELECT
 		elif (
 			hasModifiers(event, NSShiftKeyMask) or
-#			event.subtype() == NSEventSubtypeTabletPoint or
+			event.subtype() == NSEventSubtypeTabletPoint or
 			not board_view.isHidden()
 		):
 			page = current_page if board_view.isHidden() else "board"
