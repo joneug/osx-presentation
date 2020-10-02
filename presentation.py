@@ -566,7 +566,7 @@ color_chooser.setColor_(NSColor.blackColor())
 def stroke(path, color=NSColor.blackColor(), outline=NSColor.whiteColor(), size=1):
 	if outline:
 		outline.setStroke()
-		path.setLineWidth_(size+1)
+		path.setLineWidth_(size*2)
 		path.stroke()
 	color.setStroke()
 	path.setLineWidth_(size)
@@ -889,7 +889,7 @@ class MessageView(NSView):
 
 # presenter view #############################################################
 
-IDLE, BBOX, SELECT, CLIC, MIN_CLIC, MIN_SCROLL, DRAW = range(7)
+IDLE, BBOX, SELECT, CLIC, MIN_CLIC, MIN_SCROLL, DRAW, DRAG = range(8)
 
 def hasModifiers(event, mask):
 	return (event.modifierFlags() & mask) == mask
@@ -1479,9 +1479,12 @@ class PresenterView(NSView):
 			event.subtype() == NSEventSubtypeTabletPoint or
 			not board_view.isHidden()
 		):
-			page = current_page if board_view.isHidden() else "board"
-			self.startPathOnPage_(page)
-			self.state = DRAW
+			if self.selection:
+				self.state = DRAG
+			else:
+				page = current_page if board_view.isHidden() else "board"
+				self.startPathOnPage_(page)
+				self.state = DRAW
 		else:
 			self.state = CLIC
 	
@@ -1492,7 +1495,9 @@ class PresenterView(NSView):
 	
 	def mouseDragged_(self, event):
 		global cursor_location
-		cursor_location = self.transform.transformPoint_(event.locationInWindow())
+		location = self.transform.transformPoint_(event.locationInWindow())
+		dx, dy = location.x-cursor_location.x, location.y-cursor_location.y
+		cursor_location = location
 		if self.state == MIN_CLIC:
 			if hypot(cursor_location.x-self.press_location.x, cursor_location.y-self.press_location.y) < 5:
 				return
@@ -1507,6 +1512,15 @@ class PresenterView(NSView):
 			bbox.translateXBy_yBy_(delta.width, delta.height)
 		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
+		elif self.state == DRAG:
+			page = current_page if board_view.isHidden() else "board"
+			t = NSAffineTransform.transform()
+			t.translateXBy_yBy_(dx, dy)
+			for path in drawings[page]:
+				if path not in self.selection:
+					continue
+				b, _, _ = path
+				b.transformUsingAffineTransform_(t)
 		self.display()
 	
 	def mouseUp_(self, event):
