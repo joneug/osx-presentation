@@ -1400,12 +1400,18 @@ class PresenterView(NSView):
 		))
 	
 	def transformSelectionBy_(self, t):
-		page = current_page if board_view.isHidden() else "board"
+		if board_view.isHidden():
+			page = current_page
+			view = slide_view
+		else:
+			page = "board"
+			view = board_view
 		for path in drawings[page]:
 			if path not in self.selection:
 				continue
 			b, _, _ = path
 			b.transformUsingAffineTransform_(t)
+		refresher.refresh([view])
 	
 	def click(self):
 		annotation = self.page.annotationAtPoint_(self.press_location)
@@ -1526,6 +1532,8 @@ class PresenterView(NSView):
 			bbox.translateXBy_yBy_(delta.width, delta.height)
 		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
+			if not board_view.isHidden(): # no real time drawing for slide because it's too slow
+				refresher.refresh([board_view])
 		elif self.state == DRAG:
 			t = NSAffineTransform.transform()
 			t.translateXBy_yBy_(dx, dy)
