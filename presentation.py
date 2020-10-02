@@ -690,6 +690,16 @@ class BoardView(NSView):
 		for path, color, size in drawings["board"]:
 			stroke(path, color, outline=None, size=size)
 
+		x, y = cursor_location
+		cursor_bounds = NSRect()
+		W, H = CURSOR.size()
+		iw, ih = 1./slide_view.cursor_scale, 1./slide_view.cursor_scale
+		cursor_bounds.size = (W/iw, H/ih)
+		cursor_bounds.origin = x-X_hot/iw, y-(H-Y_hot)/ih
+		CURSOR.drawInRect_fromRect_operation_fraction_(
+			cursor_bounds, NSZeroRect, NSCompositeSourceAtop, 1.
+		)
+
 
 class MovieView(NSView):
 	def initWithFrame_(self, frame):
@@ -1512,6 +1522,8 @@ class PresenterView(NSView):
 		global cursor_location
 		cursor_location = self.transform.transformPoint_(event.locationInWindow())
 		slide_view.showCursor()
+		if not board_view.isHidden(): # no real time drawing for slide because it's too slow
+			refresher.refresh([board_view])
 	
 	def mouseDragged_(self, event):
 		global cursor_location
