@@ -1399,6 +1399,14 @@ class PresenterView(NSView):
 			slide_view.cursor_scale*(3 if page == "board" else 1)
 		))
 	
+	def transformSelectionBy_(self, t):
+		page = current_page if board_view.isHidden() else "board"
+		for path in drawings[page]:
+			if path not in self.selection:
+				continue
+			b, _, _ = path
+			b.transformUsingAffineTransform_(t)
+	
 	def click(self):
 		annotation = self.page.annotationAtPoint_(self.press_location)
 		if annotation is None:
@@ -1442,26 +1450,32 @@ class PresenterView(NSView):
 
 	def scrollWheel_(self, event):
 		location = event.locationInWindow()
+		center = self.transform.transformPoint_(location)
 		if hasModifiers(event, NSCommandKeyMask):
-			self.zoomAt_by_(self.transform.transformPoint_(location), event.deltaY())
-		else:
-			if self.inMiniaturesAt_(location):
-				if not event.phase(): # mouse vs. gesture
-					(_, h, _), _ = thumbnails[current_page]
-					h += MINIATURE_MARGIN
-					if event.scrollingDeltaY() < 0:
-						h = -h
-					self.miniature_origin -= h
-				else:
-					self.miniature_origin -= event.scrollingDeltaY()
-			elif slide_view.show_spotlight:
-				slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
-				refresher.refresh([slide_view])
-			else:
+			self.zoomAt_by_(center, event.deltaY())
+		elif self.inMiniaturesAt_(location):
+			if not event.phase(): # mouse vs. gesture
+				(_, h, _), _ = thumbnails[current_page]
+				h += MINIATURE_MARGIN
 				if event.scrollingDeltaY() < 0:
-					next_page()
-				else:
-					prev_page()
+					h = -h
+				self.miniature_origin -= h
+			else:
+				self.miniature_origin -= event.scrollingDeltaY()
+		elif self.selection:
+			t = NSAffineTransform.transform()
+			t.translateXBy_yBy_(center.x, center.y)
+			t.scaleBy_(exp(event.deltaY()*0.05))
+			t.translateXBy_yBy_(-center.x, -center.y)
+			self.transformSelectionBy_(t)
+		elif slide_view.show_spotlight:
+			slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
+			refresher.refresh([slide_view])
+		else:
+			if event.scrollingDeltaY() < 0:
+				next_page()
+			else:
+				prev_page()
 		refresher.refresh([self])
 	
 	def mouseDown_(self, event):
@@ -1513,14 +1527,9 @@ class PresenterView(NSView):
 		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
 		elif self.state == DRAG:
-			page = current_page if board_view.isHidden() else "board"
 			t = NSAffineTransform.transform()
 			t.translateXBy_yBy_(dx, dy)
-			for path in drawings[page]:
-				if path not in self.selection:
-					continue
-				b, _, _ = path
-				b.transformUsingAffineTransform_(t)
+			self.transformSelectionBy_(t)
 		self.display()
 	
 	def mouseUp_(self, event):
