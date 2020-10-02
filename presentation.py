@@ -241,7 +241,7 @@ from Quartz import (
 )
 
 from WebKit import (
-	WebView,
+	WKWebView, WKWebViewConfiguration,
 )
 
 from AVFoundation import (
@@ -1461,7 +1461,7 @@ class PresenterView(NSView):
 			goto_page(pdf.indexForPage_(destination.page()))
 		
 		elif url:
-			web_view.mainFrame().loadRequest_(NSURLRequest.requestWithURL_(url))
+			web_view.loadRequest_(NSURLRequest.requestWithURL_(url))
 
 
 	def scrollWheel_(self, event):
@@ -1903,13 +1903,14 @@ add_subview(presentation_view, board_view)
 
 # web view
 
-web_view = WebView.alloc().initWithFrame_frameName_groupName_(frame, nil, nil)
+web_view = WKWebView.alloc().initWithFrame_configuration_(frame, WKWebViewConfiguration.alloc().init())
 
-class WebFrameLoadDelegate(NSObject):
-	def webView_didCommitLoadForFrame_(self, view, frame):
+class NavigationDelegate(NSObject):
+#	def webView_didStartProvisionalNavigation_(self, view, navigation):
+	def webView_didFinishNavigation_(self, view, navigation):
 		presentation_show(web_view)
-web_frame_load_delegate = WebFrameLoadDelegate.alloc().init()
-web_view.setFrameLoadDelegate_(web_frame_load_delegate)
+navigation_delegate = NavigationDelegate.alloc().init()
+web_view.setNavigationDelegate_(navigation_delegate)
 
 add_subview(presentation_view, web_view)
 
