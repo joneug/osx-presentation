@@ -1315,16 +1315,14 @@ class PresenterView(NSView):
 				else:
 					self.notes_scale = 1.
 			else:                   # scaling web view
-				document = web_view.mainFrame().frameView().documentView()
-				clip = document.superview()
+				magnification = web_view.magnification()
 				if c == '+':
-					scale = (1.1, 1.1)
+					magnification *= 1.1
 				elif c == '-':
-					scale = (1./1.1, 1./1.1)
+					magnification /= 1.1
 				else:
-					scale = clip.convertSize_fromView_((1., 1.), None)
-				clip.scaleUnitSquareToSize_(scale)
-				document.setNeedsLayout_(True)
+					magnification = 1.
+				web_view.setMagnification_centeredAtPoint_(magnification, (0., 0.))
 		
 		elif c in "pP":
 			if c == 'p':
