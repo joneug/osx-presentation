@@ -1,4 +1,4 @@
-I am happy to announce the release of Présentation.app 2.2.
+I am happy to announce the release of Présentation.app 2.3.
 
 Présentation.app is a presentation tool for pdf slides (e.g. produced using LaTeX and the popular beamer class) for Mac OS X.
 You can download this release here: http://iihm.imag.fr/blanch/software/osx-presentation/releases/
@@ -8,7 +8,8 @@ Features introduced since 2.0:
   - added a "spotlight" mode to highlight on presentation screen
   - added possibility to elarge the cursor on presentation screen
   - added possibility to inset live video from the presenter
-
+  - added a white board and support for pen interaction
+  - added support for more than 2 screens setups
 
 Its most notable features are:
 
@@ -28,6 +29,13 @@ Its most notable features are:
 
 
 Changes since 1.0
+
+2.3.0:
+  - added white board
+  - enhanced support for drawing annotations (support for tablet pen, edit drawings)
+  - added ability to choose screen for windows (useful for configuration 3+ screens, request by )
+  - added support for prev/next slide navigation with scrollwheel (suggestion from)
+  - made the transition from NSWebView to WKWebView for web view (fixing scale handling of the webview)
 
 2.2.1:
   - fixed bug in TouchBar support for pre 10.15
