@@ -199,6 +199,7 @@ from AppKit import (
 	NSWindow, NSView, NSSlider, NSMenu, NSMenuItem, NSCursor,
 	NSViewWidthSizable, NSViewHeightSizable, NSViewNotSizable,
 	NSMiniaturizableWindowMask, NSResizableWindowMask, NSTitledWindowMask,
+	NSBorderlessWindowMask,
 	NSBackingStoreBuffered,
 	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask, NSShiftKeyMask,
 	NSGraphicsContext,
@@ -1843,10 +1844,10 @@ setup_touchbar()
 
 # window utils ###############################################################
 
-def create_window(title, Window=NSWindow):
+def create_window(title, Window=NSWindow, style=NSMiniaturizableWindowMask|NSResizableWindowMask|NSTitledWindowMask):
 	window = Window.alloc().initWithContentRect_styleMask_backing_defer_screen_(
 		PRESENTER_FRAME,
-		NSMiniaturizableWindowMask|NSResizableWindowMask|NSTitledWindowMask,
+		style,
 		NSBackingStoreBuffered,
 		NO,
 		None,
@@ -1880,7 +1881,8 @@ class Window(NSWindow):
 	def keyDown_(self, event):
 		return presenter_window.sendEvent_(event)
 
-presentation_window = create_window(file_name, Window=Window)
+presentation_window = create_window(file_name, Window=Window, style=NSBorderlessWindowMask|NSResizableWindowMask)
+presentation_window.setMovableByWindowBackground_(True)
 presentation_view   = presentation_window.contentView()
 frame = presentation_view.frame()
 
