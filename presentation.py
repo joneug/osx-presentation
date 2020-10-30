@@ -813,7 +813,10 @@ class VideoView(NSView):
 	
 	def setHidden_(self, hidden):
 		if hidden == False:
-			authorization = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo)
+			if AVCaptureDevice.respondsToSelector_("authorizationStatusForMediaType:"):
+				authorization = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo)
+			else:
+				authorization = AVAuthorizationStatusAuthorized
 			if authorization == AVAuthorizationStatusAuthorized:
 				device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
 				input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(device, None))
