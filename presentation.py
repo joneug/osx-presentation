@@ -296,9 +296,9 @@ RECENT_FILES = '.'.join([ID, 'recent_files'])
 user_defaults = NSUserDefaults.standardUserDefaults()
 
 ICON = NSImage.alloc().initWithData_(NSData.dataWithBytes_length_(ICON, len(ICON)))
-arrow = NSCursor.arrowCursor()
-CURSOR = arrow.image()
-X_hot, Y_hot = arrow.hotSpot()
+cursor = NSCursor.crosshairCursor()
+CURSOR = cursor.image()
+X_hot, Y_hot = cursor.hotSpot()
 
 
 restarted = False # has the application been restarted before actual launch
