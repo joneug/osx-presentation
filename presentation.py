@@ -1494,6 +1494,7 @@ class PresenterView(NSView):
 				next_page()
 			else:
 				prev_page()
+			refresher.refresh([slide_view])
 		refresher.refresh([self])
 	
 	def mouseDown_(self, event):
