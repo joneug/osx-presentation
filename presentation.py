@@ -610,6 +610,16 @@ def draw_page(page):
 
 # presentation ###############################################################
 
+def draw_cursor(x, y, iw, ih):
+	cursor_bounds = NSRect()
+	W, H = CURSOR.size()
+	cursor_bounds.size = (W/iw, H/ih)
+	cursor_bounds.origin = x-X_hot/iw, y-(H-Y_hot)/ih
+	CURSOR.drawInRect_fromRect_operation_fraction_(
+		cursor_bounds, NSZeroRect, NSCompositeSourceAtop, 1.
+	)
+
+
 class SlideView(NSView):
 	cursor_scale = 1.
 	spotlight_radius = 20.
@@ -652,14 +662,8 @@ class SlideView(NSView):
 				NSColor.colorWithCalibratedWhite_alpha_(.5, .25).setFill()
 				spotlight.fill()
 		elif self.show_cursor:
-			cursor_bounds = NSRect()
-			W, H = CURSOR.size()
 			iw, ih = transform.transformSize_((1./self.cursor_scale, 1./self.cursor_scale))
-			cursor_bounds.size = (W/iw, H/ih)
-			cursor_bounds.origin = x-X_hot/iw, y-(H-Y_hot)/ih
-			CURSOR.drawInRect_fromRect_operation_fraction_(
-				cursor_bounds, NSZeroRect, NSCompositeSourceAtop, 1.
-			)
+			draw_cursor(x, y, iw, ih)
 		
 		self.transform = transform
 		self.transform.invert()
@@ -692,14 +696,8 @@ class BoardView(NSView):
 			stroke(path, color, outline=None, size=size)
 
 		x, y = cursor_location
-		cursor_bounds = NSRect()
-		W, H = CURSOR.size()
 		iw, ih = 1./slide_view.cursor_scale, 1./slide_view.cursor_scale
-		cursor_bounds.size = (W/iw, H/ih)
-		cursor_bounds.origin = x-X_hot/iw, y-(H-Y_hot)/ih
-		CURSOR.drawInRect_fromRect_operation_fraction_(
-			cursor_bounds, NSZeroRect, NSCompositeSourceAtop, 1.
-		)
+		draw_cursor(x, y, iw, ih)
 
 
 class MovieView(NSView):
