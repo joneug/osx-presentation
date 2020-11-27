@@ -927,6 +927,7 @@ class PresenterView(NSView):
 	state = IDLE
 	selection_rect = NSZeroRect
 	selection = []
+	preview_page = None
 	
 	
 	def draw_miniatures(self):
@@ -1114,7 +1115,9 @@ class PresenterView(NSView):
 		
 		
 		# next page or board
-		if current_page < last_page:
+		if self.preview_page != None:
+			next_page = pdf.pageAtIndex_(self.preview_page)
+		elif current_page < last_page:
 			next_page = pdf.pageAtIndex_(current_page+1)
 		else:
 			return
@@ -1398,6 +1401,16 @@ class PresenterView(NSView):
 		ex, _ = point
 		return ex > width - MINIATURE_WIDTH
 	
+	def pageAt_(self, point):
+		_, (_, height) = self.bounds()
+		ex, ey = point
+		for i in range(page_count):
+			(_, h, o), _ = thumbnails[i]
+			if ey + h + MINIATURE_MARGIN > self.miniature_origin-o+height:
+				break
+		return i
+	
+	
 	def startPathOnPage_(self, page):
 		self.path = NSBezierPath.bezierPath()
 		self.path.setLineCapStyle_(NSRoundLineCapStyle)
@@ -1521,10 +1534,22 @@ class PresenterView(NSView):
 	
 	def mouseMoved_(self, event):
 		global cursor_location
-		cursor_location = self.transform.transformPoint_(event.locationInWindow())
+		location = event.locationInWindow()
+		cursor_location = self.transform.transformPoint_(location)
 		slide_view.showCursor()
 		if not board_view.isHidden(): # no real time drawing for slide because it's too slow
 			refresher.refresh([board_view])
+		
+		if self.inMiniaturesAt_(location):
+			i = self.pageAt_(location)
+			if i != self.preview_page:
+				self.preview_page = i
+				refresher.refresh([self])
+		else:
+			if self.preview_page != None:
+				self.preview_page = None
+				refresher.refresh([self])
+
 	
 	def mouseDragged_(self, event):
 		global cursor_location
@@ -1555,12 +1580,7 @@ class PresenterView(NSView):
 	
 	def mouseUp_(self, event):
 		if self.state == MIN_CLIC:
-			_, (width, height) = self.bounds()
-			ex, ey = event.locationInWindow()
-			for i in range(page_count):
-				(_, h, o), _ = thumbnails[i]
-				if ey + h + MINIATURE_MARGIN > self.miniature_origin-o+height:
-					break
+			i = self.pageAt_(event.locationInWindow())
 			goto_page(i)
 		elif self.state == CLIC:
 			self.click()
