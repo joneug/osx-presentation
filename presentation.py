@@ -1569,6 +1569,10 @@ class PresenterView(NSView):
 			delta = self.transform.transformSize_((event.deltaX(), -event.deltaY()))
 			bbox = slide_bbox if board_view.isHidden() else board_bbox
 			bbox.translateXBy_yBy_(delta.width, delta.height)
+		elif self.state == CLIC:
+			page = current_page if board_view.isHidden() else "board"
+			self.startPathOnPage_(page)
+			self.state = DRAW
 		elif self.state == DRAW:
 			self.path.lineToPoint_(cursor_location)
 			if not board_view.isHidden(): # no real time drawing for slide because it's too slow
