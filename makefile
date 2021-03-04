@@ -66,7 +66,7 @@ $(iconset): $(script)
 archive:
 	hg archive -r $(VERSION) -t tbz2 $@
 
-pkg: $(app) $(dist)
+pkg: $(dist)
 
 $(dist): $(app)
 	mkdir -p $(DIST_PATH)
