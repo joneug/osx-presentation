@@ -1501,10 +1501,7 @@ class PresenterView(NSView):
 			slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
 			refresher.refresh([slide_view])
 		else:
-			if not event.hasPreciseScrollingDeltas():
-				delta = event.scrollingDeltaY()
-			else:
-				delta = event.deltaY()
+			delta = event.deltaY()
 			if delta < 0:
 				next_page()
 			elif delta > 0:
