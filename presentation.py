@@ -5,7 +5,7 @@
 """
 A PDF presentation tool for Mac OS X
 
-Copyright (c) 2011--2020, IIHM/LIG - Renaud Blanch <http://iihm.imag.fr/blanch/>
+Copyright (c) 2011--2021, IIHM/LIG - Renaud Blanch <http://iihm.imag.fr/blanch/>
 Licence: GPLv3 or higher <http://www.gnu.org/licenses/gpl.html>
 """
 
@@ -36,7 +36,7 @@ ID = "fr.imag.iihm.blanch.osx-presentation"
 MAJOR, MINOR, PATCH, BETA = 2, 3, 1, ''
 VERSION = "%s.%s.%s%s" % (MAJOR, MINOR, PATCH, BETA)
 HOME = "http://iihm.imag.fr/blanch/software/osx-presentation/"
-COPYRIGHT = "Copyright © 2011-2020 Renaud Blanch"
+COPYRIGHT = "Copyright © 2011-2021 Renaud Blanch"
 CREDITS = """
 Home: <a href='%s'>osx-presentation</a> <br/>
 Source: <a href='https://foss.heptapod.net/macos-apps/osx-presentation/blob/%s/presentation.py'>presentation.py</a> <br/>
