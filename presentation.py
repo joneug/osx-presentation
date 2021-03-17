@@ -196,7 +196,7 @@ from AppKit import (
 	NSOpenPanel, NSFileHandlingPanelOKButton,
 	NSColorPanel,
 	NSAlert, NSAlertDefaultReturn, NSAlertAlternateReturn,
-	NSWindow, NSView, NSSlider, NSMenu, NSMenuItem, NSCursor,
+	NSWindow, NSView, NSSlider, NSMenu, NSMenuItem, NSCursor, NSPopUpButton,
 	NSViewWidthSizable, NSViewHeightSizable, NSViewNotSizable,
 	NSMiniaturizableWindowMask, NSResizableWindowMask, NSTitledWindowMask,
 	NSBorderlessWindowMask,
@@ -709,7 +709,7 @@ class MovieView(NSView):
 		player_layer.setFrame_(frame)
 		self.setLayer_(player_layer)
 		
-		self.slider = NSSlider.alloc().initWithFrame_(((0, 5), (frame.size.width, 15)))
+		self.slider = NSSlider.alloc().initWithFrame_(((0, 5), (frame.size.width, 25)))
 		self.slider.setTarget_(self)
 		self.slider.setAction_("slide:")
 		add_subview(self, self.slider, NSViewWidthSizable)
@@ -782,6 +782,8 @@ class MovieView(NSView):
 	def isPlaying(self):
 		return player.rate() > 0.
 
+def test(result):
+	NSLog("%@", result)
 
 class VideoView(NSView):
 	TOP, BOTTOM = "V:|-[video(==%(h)s)]", "V:[video(==%(h)s)]-|"
@@ -806,9 +808,6 @@ class VideoView(NSView):
 		self.setAlphaValue_(.75)
 		return self
 	
-#	def grant_(self, result):
-#		NSLog("%@", result)
-	
 	def setHidden_(self, hidden):
 		if hidden == False:
 			if AVCaptureDevice.respondsToSelector_("authorizationStatusForMediaType:"):
@@ -816,7 +815,23 @@ class VideoView(NSView):
 			else:
 				authorization = AVAuthorizationStatusAuthorized
 			if authorization == AVAuthorizationStatusAuthorized:
-				device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
+				devices = AVCaptureDevice.devicesWithMediaType_(AVMediaTypeVideo)
+				try:
+					device, = devices
+#					device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
+				except ValueError:
+					alert = NSAlert.alloc().init()
+					alert.setIcon_(ICON)
+					alert.setMessageText_("Choose video device")
+					alert.setInformativeText_("The following devices are available:")
+					popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(((0, 0), (200, 25)), False)
+					for device in devices:
+						popup.addItemWithTitle_(device.localizedName())
+					alert.setAccessoryView_(popup)
+					alert.runModal()
+					device = devices[popup.indexOfSelectedItem()]
+					print(device)
+				
 				input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(device, None))
 				if self.session.canAddInput_(input):
 					self.session.addInput_(input)
@@ -824,7 +839,7 @@ class VideoView(NSView):
 			elif authorization == AVAuthorizationStatusNotDetermined:
 #				AVCaptureDevice.requestAccessForMediaType_completionHandler_(
 #					AVMediaTypeVideo,
-#					self.grant_,
+#					test,
 #				)
 				pass
 			else:
@@ -832,6 +847,8 @@ class VideoView(NSView):
 				pass
 		else:
 			self.session.stopRunning()
+			for input in self.session.inputs():
+				self.session.removeInput_(input)
 		return super(VideoView, self).setHidden_(hidden)
 	
 	def requiresConstraintBasedLayout(self):
@@ -1068,7 +1085,7 @@ class PresenterView(NSView):
 			NSForegroundColorAttributeName: NSColor.whiteColor(),
 		})
 		app.dockTile().setBadgeLabel_(clock)
-	
+		
 		# page number
 		if self.target_page:
 			page_number = NSString.stringWithString_("goto %s/%s" % (
@@ -1714,13 +1731,15 @@ class ApplicationDelegate(NSObject):
 			title =   "Update available"
 			message = "A new version (%@) of %@ is available."
 		
-		button = NSAlert.alertWithMessageText_defaultButton_alternateButton_otherButton_informativeTextWithFormat_(
+		alert = NSAlert.alertWithMessageText_defaultButton_alternateButton_otherButton_informativeTextWithFormat_(
 			title,
 			"Go to website",
 			("Enable" if user_defaults.boolForKey_(NO_NOTIFY) else "Disable") + " notification",
 			"Cancel",
 			message, version, _s(NAME),
-		).runModal()
+		)
+		alert.setIcon_(ICON)
+		button = alert.runModal()
 		if button == NSAlertDefaultReturn:
 			NSWorkspace.sharedWorkspace().openURL_(NSURL.URLWithString_(HOME))
 		elif button == NSAlertAlternateReturn:
