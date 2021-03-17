@@ -830,7 +830,6 @@ class VideoView(NSView):
 					alert.setAccessoryView_(popup)
 					alert.runModal()
 					device = devices[popup.indexOfSelectedItem()]
-					print(device)
 				
 				input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(device, None))
 				if self.session.canAddInput_(input):
@@ -841,6 +840,7 @@ class VideoView(NSView):
 #					AVMediaTypeVideo,
 #					test,
 #				)
+#				TODO: explain how to run from terminal
 				pass
 			else:
 				# should remind to turn on Camera access in Privacy
