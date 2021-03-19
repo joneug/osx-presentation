@@ -254,6 +254,7 @@ try: # missing constants for some bindings
 	from AVFoundation import (
 		AVPlayerItemStatusReadyToPlay,
 		AVMediaTypeVideo,
+		AVLayerVideoGravityResizeAspect,
 		AVLayerVideoGravityResizeAspectFill,
 		AVCaptureSessionPreset320x240,
 		AVAuthorizationStatusAuthorized,
@@ -264,6 +265,7 @@ except:
 	AVAuthorizationStatusNotDetermined = 0
 	AVAuthorizationStatusAuthorized    = 3
 	AVMediaTypeVideo = "vide"
+	AVLayerVideoGravityResizeAspect = "AVLayerVideoGravityResizeAspect"
 	AVLayerVideoGravityResizeAspectFill = "AVLayerVideoGravityResizeAspectFill"
 	AVCaptureSessionPreset320x240 = "AVCaptureSessionPreset320x240"
 
@@ -799,12 +801,12 @@ class VideoView(NSView):
 		if self.session.canSetSessionPreset_(AVCaptureSessionPreset320x240):
 			self.session.setSessionPreset_(AVCaptureSessionPreset320x240)
 		self.setWantsLayer_(True)
-		preview = AVCaptureVideoPreviewLayer.layerWithSession_(self.session)
-		preview.setVideoGravity_(AVLayerVideoGravityResizeAspectFill)
-		preview.setFrame_(frame)
-		preview.setMasksToBounds_(True)
-		preview.setCornerRadius_(15.)
-		self.setLayer_(preview)
+		self.preview = AVCaptureVideoPreviewLayer.layerWithSession_(self.session)
+		self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspectFill)
+		self.preview.setFrame_(frame)
+		self.preview.setMasksToBounds_(True)
+		self.preview.setCornerRadius_(15.)
+		self.setLayer_(self.preview)
 		self.setAlphaValue_(.75)
 		return self
 	
@@ -854,11 +856,28 @@ class VideoView(NSView):
 	def requiresConstraintBasedLayout(self):
 		return True
 	
-	def align_(self, positions):
+	def toggle_size(self):
+		_, (w, h) = self.frame()
+		if (w, h) != (self.w, self.h):
+			self.align_withWidth_Height_((self.RIGHT, self.BOTTOM))
+			self.setAlphaValue_(.75)
+			self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspectFill)
+			toggle_black_view()
+		else:
+			_, (w, h) = self.superview().frame()
+			self.setAlphaValue_(1.)
+			self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspect)
+			self.align_withWidth_Height_((self.RIGHT, self.BOTTOM), w-40, h-40)
+			toggle_black_view()
+
+	
+	def align_withWidth_Height_(self, positions, w=None, h=None):
+		if w is None: w = self.w
+		if h is None: h = self.h
 		self.removeConstraints_(self.constraints())
 		NSLayoutConstraint.activateConstraints_(sum(
 			(NSLayoutConstraint.constraintsWithVisualFormat_options_metrics_views_(
-				p % {"w": self.w, "h": self.h}, 0, None, {"video": self})
+				p % {"w": w, "h": h}, 0, None, {"video": self})
 			for p in positions), [])
 		)
 
@@ -1374,6 +1393,9 @@ class PresenterView(NSView):
 				self.selection = []
 			else:
 				del drawings[page]
+		
+		elif c == 'V': # toggle video size
+			video_view.toggle_size()
 		
 		else:
 			actions = {
@@ -1969,7 +1991,7 @@ add_subview(presentation_view, movie_view)
 
 video_view = VideoView.alloc().initWithFrame_(((0, 0), (200, 180)))
 add_subview(presentation_view, video_view)
-video_view.align_((VideoView.BOTTOM, VideoView.RIGHT))
+video_view.align_withWidth_Height_((VideoView.BOTTOM, VideoView.RIGHT))
 
 # message view
 
