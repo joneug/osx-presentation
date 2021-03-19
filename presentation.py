@@ -788,24 +788,20 @@ def test(result):
 	NSLog("%@", result)
 
 class VideoView(NSView):
-	TOP, BOTTOM = "V:|-[video(==%(h)s)]", "V:[video(==%(h)s)]-|"
-	LEFT, RIGHT = "H:|-[video(==%(w)s)]", "H:[video(==%(w)s)]-|"
-	
 	def initWithFrame_(self, frame):
 		assert NSView.initWithFrame_(self, frame) == self
 		_, (w, h) = frame
 		self.w = w
 		self.h = h
-		self.setTranslatesAutoresizingMaskIntoConstraints_(False)
 		self.session = AVCaptureSession.alloc().init()
 		if self.session.canSetSessionPreset_(AVCaptureSessionPreset320x240):
 			self.session.setSessionPreset_(AVCaptureSessionPreset320x240)
 		self.setWantsLayer_(True)
 		self.preview = AVCaptureVideoPreviewLayer.layerWithSession_(self.session)
-		self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspectFill)
 		self.preview.setFrame_(frame)
 		self.preview.setMasksToBounds_(True)
 		self.preview.setCornerRadius_(15.)
+		self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspectFill)
 		self.setLayer_(self.preview)
 		self.setAlphaValue_(.75)
 		return self
@@ -856,30 +852,26 @@ class VideoView(NSView):
 	def requiresConstraintBasedLayout(self):
 		return True
 	
+	_small = True
 	def toggle_size(self):
-		_, (w, h) = self.frame()
-		if (w, h) != (self.w, self.h):
-			self.align_withWidth_Height_((self.RIGHT, self.BOTTOM))
-			self.setAlphaValue_(.75)
-			self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspectFill)
-			toggle_black_view()
+		_, (w, h) =  self.superview().frame()
+		if self._small:
+			alpha = 1.
+			gravity =AVLayerVideoGravityResizeAspect
+			x, y = 20, 20
+			w, h = w-40, h-40
+			view = black_view
 		else:
-			_, (w, h) = self.superview().frame()
-			self.setAlphaValue_(1.)
-			self.preview.setVideoGravity_(AVLayerVideoGravityResizeAspect)
-			self.align_withWidth_Height_((self.RIGHT, self.BOTTOM), w-40, h-40)
-			toggle_black_view()
-
-	
-	def align_withWidth_Height_(self, positions, w=None, h=None):
-		if w is None: w = self.w
-		if h is None: h = self.h
-		self.removeConstraints_(self.constraints())
-		NSLayoutConstraint.activateConstraints_(sum(
-			(NSLayoutConstraint.constraintsWithVisualFormat_options_metrics_views_(
-				p % {"w": w, "h": h}, 0, None, {"video": self})
-			for p in positions), [])
-		)
+			alpha = .75
+			gravity = AVLayerVideoGravityResizeAspectFill
+			x, y = w-self.w-20, 20
+			w, h = self.w, self.h
+			view = slide_view
+		presentation_show(view)
+		self.setAlphaValue_(alpha)
+		self.preview.setVideoGravity_(gravity)
+		self.setFrame_(((x, y), (w, h)))
+		self._small = not self._small
 
 
 class MessageView(NSView):
@@ -1938,7 +1930,7 @@ def create_view(View, frame=None, window=None):
 
 def add_subview(view, subview, autoresizing_mask=NSViewWidthSizable|NSViewHeightSizable):
 	subview.setAutoresizingMask_(autoresizing_mask)
-	subview.setFrameOrigin_((0, 0))
+#	subview.setFrameOrigin_((0, 0))
 	view.addSubview_(subview)
 
 
@@ -1989,9 +1981,9 @@ add_subview(presentation_view, movie_view)
 
 # video view
 
-video_view = VideoView.alloc().initWithFrame_(((0, 0), (200, 180)))
-add_subview(presentation_view, video_view)
-video_view.align_withWidth_Height_((VideoView.BOTTOM, VideoView.RIGHT))
+_, (w, _) = frame
+video_view = VideoView.alloc().initWithFrame_(((w-200-20, 20), (200, 180)))
+add_subview(presentation_view, video_view, 0)
 
 # message view
 
