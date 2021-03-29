@@ -808,30 +808,34 @@ class VideoView(NSView):
 		self.setAlphaValue_(.75)
 		return self
 	
-	
-	def requiresConstraintBasedLayout(self):
-		return True
-	
 	_small = True
-	def toggle_size(self):
+	def layout(self):
 		_, (w, h) =  self.superview().frame()
 		if self._small:
-			alpha = 1.
-			gravity = AVLayerVideoGravityResizeAspect
-			x, y = 20, 20
-			w, h = w-40, h-40
-			view = black_view
-		else:
-			alpha = .75
-			gravity = AVLayerVideoGravityResizeAspectFill
 			x, y = w-self.w-20, 20
 			w, h = self.w, self.h
+		else:
+			x, y = 20, 20
+			w, h = w-40, h-40
+		self.setFrame_(((x, y), (w, h)))
+
+	def viewDidEndLiveResize(self):
+		self.layout()
+	
+	def toggle_size(self):
+		self._small = not self._small
+		if self._small:
 			view = slide_view
+			alpha = .75
+			gravity = AVLayerVideoGravityResizeAspectFill
+		else:
+			view = black_view
+			alpha = 1.
+			gravity = AVLayerVideoGravityResizeAspect
 		presentation_show(view)
 		self.setAlphaValue_(alpha)
 		self.preview.setVideoGravity_(gravity)
-		self.setFrame_(((x, y), (w, h)))
-		self._small = not self._small
+		self.layout()
 	
 	
 	device = None
@@ -849,8 +853,6 @@ class VideoView(NSView):
 			for device in devices:
 				popup.addItemWithTitle_(device.localizedName())
 			alert.setAccessoryView_(popup)
-			w = alert.window().setLevel_(CGShieldingWindowLevel())
-			alert.window().orderFront_(None)
 			alert.runModal()
 			device = devices[popup.indexOfSelectedItem()]
 		return device
