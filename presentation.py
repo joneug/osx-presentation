@@ -786,8 +786,7 @@ class MovieView(NSView):
 	def isPlaying(self):
 		return player.rate() > 0.
 
-def test(result):
-	NSLog("%@", result)
+
 
 class VideoView(NSView):
 	def initWithFrame_(self, frame):
@@ -1565,6 +1564,8 @@ class PresenterView(NSView):
 		refresher.refresh([self])
 	
 	def mouseDown_(self, event):
+		if color_chooser.isVisible():
+			color_chooser.orderFront_(None)
 		assert self.state == IDLE
 		location = event.locationInWindow()
 		self.press_location = self.transform.transformPoint_(location)
