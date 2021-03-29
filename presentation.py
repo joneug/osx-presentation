@@ -2075,6 +2075,7 @@ def toggle_fullscreen(fullscreen=None):
 				view.exitFullScreenModeWithOptions_({})
 		if color_chooser.isVisible():
 			color_chooser.orderFront_(None)
+		video_view.layout()
 		presenter_window.makeFirstResponder_(presenter_view)
 	
 	return _fullscreen
