@@ -808,48 +808,6 @@ class VideoView(NSView):
 		self.setAlphaValue_(.75)
 		return self
 	
-	def setHidden_(self, hidden):
-		if hidden == False:
-			if AVCaptureDevice.respondsToSelector_("authorizationStatusForMediaType:"):
-				authorization = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo)
-			else:
-				authorization = AVAuthorizationStatusAuthorized
-			if authorization == AVAuthorizationStatusAuthorized:
-				devices = AVCaptureDevice.devicesWithMediaType_(AVMediaTypeVideo)
-				try:
-					device, = devices
-#					device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
-				except ValueError:
-					alert = NSAlert.alloc().init()
-					alert.setIcon_(ICON)
-					alert.setMessageText_("Choose video device")
-					alert.setInformativeText_("The following devices are available:")
-					popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(((0, 0), (200, 25)), False)
-					for device in devices:
-						popup.addItemWithTitle_(device.localizedName())
-					alert.setAccessoryView_(popup)
-					alert.runModal()
-					device = devices[popup.indexOfSelectedItem()]
-				
-				input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(device, None))
-				if self.session.canAddInput_(input):
-					self.session.addInput_(input)
-					self.session.startRunning()
-			elif authorization == AVAuthorizationStatusNotDetermined:
-#				AVCaptureDevice.requestAccessForMediaType_completionHandler_(
-#					AVMediaTypeVideo,
-#					test,
-#				)
-#				TODO: explain how to run from terminal
-				pass
-			else:
-				# should remind to turn on Camera access in Privacy
-				pass
-		else:
-			self.session.stopRunning()
-			for input in self.session.inputs():
-				self.session.removeInput_(input)
-		return super(VideoView, self).setHidden_(hidden)
 	
 	def requiresConstraintBasedLayout(self):
 		return True
@@ -859,7 +817,7 @@ class VideoView(NSView):
 		_, (w, h) =  self.superview().frame()
 		if self._small:
 			alpha = 1.
-			gravity =AVLayerVideoGravityResizeAspect
+			gravity = AVLayerVideoGravityResizeAspect
 			x, y = 20, 20
 			w, h = w-40, h-40
 			view = black_view
@@ -874,6 +832,68 @@ class VideoView(NSView):
 		self.preview.setVideoGravity_(gravity)
 		self.setFrame_(((x, y), (w, h)))
 		self._small = not self._small
+	
+	
+	device = None
+	def choose_device(self):
+#		device = AVCaptureDevice.defaultDeviceWithMediaType_(AVMediaTypeVideo)
+		devices = AVCaptureDevice.devicesWithMediaType_(AVMediaTypeVideo)
+		try:
+			device, = devices
+		except ValueError:
+			alert = NSAlert.alloc().init()
+			alert.setIcon_(ICON)
+			alert.setMessageText_("Choose video device")
+			alert.setInformativeText_("The following devices are available:")
+			popup = NSPopUpButton.alloc().initWithFrame_pullsDown_(((0, 0), (200, 25)), False)
+			for device in devices:
+				popup.addItemWithTitle_(device.localizedName())
+			alert.setAccessoryView_(popup)
+			w = alert.window().setLevel_(CGShieldingWindowLevel())
+			alert.window().orderFront_(None)
+			alert.runModal()
+			device = devices[popup.indexOfSelectedItem()]
+		return device
+	
+	def start(self):
+		if self.session.isRunning():
+			self.stop()
+		if self.device is None:
+			self.device = self.choose_device()
+		input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(self.device, None))
+		if self.session.canAddInput_(input):
+			self.session.addInput_(input)
+			self.session.startRunning()
+	
+	def stop(self):
+		if not self.session.isRunning():
+			return
+		self.session.stopRunning()
+		for input in self.session.inputs():
+			self.session.removeInput_(input)
+	
+	def setHidden_(self, hidden):
+		if hidden == False:
+			if AVCaptureDevice.respondsToSelector_("authorizationStatusForMediaType:"):
+				authorization = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeVideo)
+			else:
+				authorization = AVAuthorizationStatusAuthorized
+			if authorization == AVAuthorizationStatusAuthorized:
+				self.start()
+			elif authorization == AVAuthorizationStatusNotDetermined:
+#				AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+#					AVMediaTypeVideo,
+#					test,
+#				)
+#				TODO: explain how to run from terminal
+				pass
+			else:
+				# should remind to turn on Camera access in Privacy
+				pass
+		else:
+			self.stop()
+		return super(VideoView, self).setHidden_(hidden)
+	
 
 
 class MessageView(NSView):
