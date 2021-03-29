@@ -239,6 +239,7 @@ from Quartz import (
 	kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
 	kPDFActionNamedGoBack, kPDFActionNamedGoForward,
 	kPDFDisplayBoxMediaBox, kPDFDisplayBoxCropBox,
+	CGShieldingWindowLevel,
 )
 
 from WebKit import (
@@ -563,6 +564,7 @@ board_bbox = NSAffineTransform.transform()
 cursor_location = (0, 0)
 
 color_chooser = NSColorPanel.sharedColorPanel()
+color_chooser.setLevel_(CGShieldingWindowLevel())
 color_chooser.setMode_(NSColorPanelModeCrayon)
 color_chooser.setColor_(NSColor.blackColor())
 
@@ -2049,6 +2051,8 @@ def toggle_fullscreen(fullscreen=None):
 				view.enterFullScreenMode_withOptions_(screen, {})
 			else:
 				view.exitFullScreenModeWithOptions_({})
+		if color_chooser.isVisible():
+			color_chooser.orderFront_(None)
 		presenter_window.makeFirstResponder_(presenter_view)
 	
 	return _fullscreen
