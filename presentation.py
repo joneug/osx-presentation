@@ -55,9 +55,7 @@ CR, ESC, DEL = (chr(k) for k in [13, 27, 127])
 
 HELP = [
 	("?",         "show/hide this help"),
-	("h",         "hide"),
-	("q",         "quit"),
-	("r",         "relaunch"),
+	("h/q/r",     "hide/quit/relaunch"),
 	("./b/w/m",   "toggle black/board/web/movie view"),
 	("s",         "show slide view"),
 	("v",         "show/hide video view"),
@@ -856,10 +854,10 @@ class VideoView(NSView):
 			device = devices[popup.indexOfSelectedItem()]
 		return device
 	
-	def start(self):
+	def start(self, switch_device=False):
 		if self.session.isRunning():
 			self.stop()
-		if self.device is None:
+		if switch_device or self.device is None:
 			self.device = self.choose_device()
 		input = _e(AVCaptureDeviceInput.deviceInputWithDevice_error_(self.device, None))
 		if self.session.canAddInput_(input):
@@ -1491,6 +1489,16 @@ class PresenterView(NSView):
 		refresher.refresh([view])
 	
 	def click(self):
+		if not video_view.isHidden():
+			rect = video_view.frame()
+			if page == "board":
+				rect = transform_rect(board_bbox, rect)
+			else:
+				rect = transform_rect(slide_view.transform, rect)
+			if NSPointInRect(self.press_location, rect):
+				video_view.start(switch_device=True)
+				return
+
 		annotation = self.page.annotationAtPoint_(self.press_location)
 		if annotation is None:
 			next_page()
