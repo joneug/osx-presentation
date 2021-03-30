@@ -689,6 +689,7 @@ class SlideView(NSView):
 class BoardView(NSView):
 	def initWithFrame_(self, frame):
 		assert NSView.initWithFrame_(self, frame) == self
+		self.setCanDrawConcurrently_(True)
 		self.setBackgroundColor_(NSColor.whiteColor())
 		return self
 
