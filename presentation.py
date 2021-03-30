@@ -244,29 +244,23 @@ from WebKit import (
 	WKWebView, WKWebViewConfiguration,
 )
 
+# monkey patch objc to work around buggy AVFoundation bridgesupport
+import objc as _objc
+_objc_splitSignature = _objc.splitSignature
+def _splitSignature(typestr):
+	try:    return _objc_splitSignature(typestr)
+	except: return ('@',)
+_objc.splitSignature = _splitSignature
+
 from AVFoundation import (
 	AVAsset, AVPlayerItem, AVPlayer, AVPlayerLayer, AVAssetImageGenerator,
 	AVCaptureSession, AVCaptureDevice, AVCaptureDeviceInput, AVCaptureVideoPreviewLayer,
+	AVMediaTypeVideo, AVCaptureSessionPreset320x240, AVPlayerItemStatusReadyToPlay,
+	AVLayerVideoGravityResizeAspect, AVLayerVideoGravityResizeAspectFill,
+	AVAuthorizationStatusAuthorized, AVAuthorizationStatusNotDetermined,
 )
 
-try: # missing constants for some bindings
-	from AVFoundation import (
-		AVPlayerItemStatusReadyToPlay,
-		AVMediaTypeVideo,
-		AVLayerVideoGravityResizeAspect,
-		AVLayerVideoGravityResizeAspectFill,
-		AVCaptureSessionPreset320x240,
-		AVAuthorizationStatusAuthorized,
-		AVAuthorizationStatusNotDetermined,
-	)
-except:
-	AVPlayerItemStatusReadyToPlay = 1
-	AVAuthorizationStatusNotDetermined = 0
-	AVAuthorizationStatusAuthorized    = 3
-	AVMediaTypeVideo = "vide"
-	AVLayerVideoGravityResizeAspect = "AVLayerVideoGravityResizeAspect"
-	AVLayerVideoGravityResizeAspectFill = "AVLayerVideoGravityResizeAspectFill"
-	AVCaptureSessionPreset320x240 = "AVCaptureSessionPreset320x240"
+_objc.splitSignature = _objc_splitSignature
 
 
 if sys.version_info[0] == 3:
