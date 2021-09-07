@@ -195,7 +195,6 @@ from AppKit import (
 	NSWindow, NSView, NSSlider, NSMenu, NSMenuItem, NSCursor, NSPopUpButton,
 	NSViewWidthSizable, NSViewHeightSizable, NSViewNotSizable,
 	NSMiniaturizableWindowMask, NSResizableWindowMask, NSTitledWindowMask,
-	NSBorderlessWindowMask,
 	NSBackingStoreBuffered,
 	NSCommandKeyMask, NSAlternateKeyMask, NSControlKeyMask, NSShiftKeyMask,
 	NSGraphicsContext,
@@ -1967,7 +1966,7 @@ class Window(NSWindow):
 	def keyDown_(self, event):
 		return presenter_window.sendEvent_(event)
 
-presentation_window = create_window(file_name, Window=Window, style=NSBorderlessWindowMask|NSResizableWindowMask)
+presentation_window = create_window(file_name, Window=Window)
 presentation_window.setMovableByWindowBackground_(True)
 presentation_view   = presentation_window.contentView()
 frame = presentation_view.frame()
