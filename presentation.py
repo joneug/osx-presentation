@@ -2119,16 +2119,16 @@ class PresenterView(NSView):
 		elif slide_view.show_spotlight:
 			slide_view.spotlight_radius *= exp(event.deltaY()*0.05)
 			refresher.refresh([slide_view])
-		else:
-			self.delta += event.deltaY()
-			if abs(self.delta) < 1:
-				return
-			if self.delta < 0.:
-				next_page()
-			elif self.delta > 0.:
-				prev_page()
-			self.delta = 0
-			refresher.refresh([slide_view])
+		#else:
+		#	self.delta += event.deltaY()
+		#	if abs(self.delta) < 1:
+		#		return
+		#	if self.delta < 0.:
+		#		next_page()
+		#	elif self.delta > 0.:
+		#		prev_page()
+		#	self.delta = 0
+		#	refresher.refresh([slide_view])
 		refresher.refresh([self])
 	
 	def mouseDown_(self, event):
