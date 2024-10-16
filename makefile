@@ -1,29 +1,63 @@
-# variables ##################################################################
-
-DIST_PATH = release
+# variables #################################################################
 
 version = $(shell ./presentation.py --version)
 VERSION = $(lastword $(version))
 IDENTIFIER = $(word 2,$(version))
 
 
-# targets ####################################################################
+# targets ###################################################################
 
+# note: for pkgutil to work, the é should be UTF-8 NFD encoded
+# this could be forced using this line in pkg build rule, but it would add a dependency
+# convmv -r -f utf8 -t utf8 --nfd --notest $(DIST_PATH)
+
+app     := Présentation.app
+dev     := Dev.app
 script  := presentation.py
 icon    := presentation.icns
 iconset := presentation.iconset
-app     := Présentation.app
+objc    := packages
+venv    := env
 dist    := osx-presentation-$(VERSION).pkg
-src     := osx-presentation-$(VERSION).tbz
 
 
-# rules ######################################################################
+# rules #####################################################################
 
-.PHONY: all clean pkg archive
+# note: codesigning, pkg notarization and stapling,
+# see https://scriptingosx.com/2019/09/notarize-a-command-line-tool/
+#     https://developer.apple.com/documentation/technotes/tn3147-migrating-to-the-latest-notarization-tool
+
+
+.PHONY: all dev pkg archive clean
 
 all: $(app)
 
-$(app): $(script) $(icon) makefile
+$(app): $(dev)
+	rm -rf $@
+	
+	cp -RL $< $@
+	cp -Rf $(objc) $@/Contents/Resources/packages
+	
+	echo "\
+	<?xml version="1.0" encoding='UTF-8'?> \
+	<!DOCTYPE plist PUBLIC '-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'> \
+	<plist version='1.0'> \
+	<dict> \
+		<key>com.apple.security.device.camera</key> \
+		<true/> \
+		<key>com.apple.security.cs.allow-unsigned-executable-memory</key> \
+		<true/> \
+	</dict> \
+	</plist>" | plutil -convert xml1 - -o $@/Contents/Entitlements.plist
+#	find $@ -name '*.so' -exec codesign --verbose --force --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime {} ';'
+#	codesign --verbose --force --deep --timestamp -s "Developer ID Application: Renaud Blanch (J6M3684Y6M)" --entitlements $@/Contents/Entitlements.plist -o runtime $@
+	
+	touch $@
+
+
+dev: $(dev)
+
+$(dev): $(script) $(icon) $(objc) makefile
 	mkdir -p $@/Contents/
 	echo "APPL????" > $@/Contents/PkgInfo
 	echo "\
@@ -42,19 +76,20 @@ $(app): $(script) $(icon) makefile
 			<key>LSHandlerRank</key><string>Alternate</string> \
 		</dict></array> \
 		<key>CFBundleShortVersionString</key><string>$(VERSION)</string> \
-		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2021 Renaud Blanch</string> \
+		<key>NSHumanReadableCopyright</key><string>Copyright © 2011-2024 Renaud Blanch</string> \
 		<key>CFBundleIconFile</key><string>presentation</string> \
 		<key>NSCameraUsageDescription</key><string>This app requires camera access to display video feed</string> \
 	</dict> \
 	</plist>" > $@/Contents/Info.plist
 	
 	mkdir -p $@/Contents/MacOS/
-	cp $< $@/Contents/MacOS/
+	ln -f $< $@/Contents/MacOS/
 	
 	mkdir -p $@/Contents/Resources/
-	cp $(icon) $@/Contents/Resources/
+	ln -f $(icon) $@/Contents/Resources/
 	
 	touch $@
+
 
 $(icon): $(iconset)
 	iconutil --convert icns --output $@ $<
@@ -62,18 +97,38 @@ $(icon): $(iconset)
 $(iconset): $(script)
 	mkdir -p $@
 	./$< --icon > $@/icon_256x256.png
+	touch $@
 
-archive:
-	hg archive -r $(VERSION) -t tbz2 $@
+
+$(objc): requirements.txt $(venv)
+	for python_version in 3.7 3.8; do \
+		mkdir -p $@/$$python_version; \
+		$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --python-version=$$python_version --target=$@/$$python_version -r $< ; \
+	done
+	for python_version in 3.9; do \
+		mkdir -p $@/$$python_version; \
+		$(venv)/bin/pip install --platform macosx_10_9_universal2 --only-binary=:all: --upgrade --python-version=$$python_version --target=$@/$$python_version -r $< ; \
+	done
+#	$(venv)/bin/pip install --platform macosx_10_9_x86_64 --only-binary=:all: --upgrade --target=$@ -r $<
+#	$(venv)/bin/pip install --platform macosx_10_9_universal2 --only-binary=:all: --target=$@ -r $<
+	
+$(venv):
+	python3.9 -m venv $@
+	$@/bin/pip install --upgrade pip
+	touch $@
+
 
 pkg: $(dist)
 
 $(dist): $(app)
-	mkdir -p $(DIST_PATH)
-	cp -r $^ $(DIST_PATH)
-	pkgbuild --root $(DIST_PATH) --identifier $(IDENTIFIER) --version $(VERSION) --install-location /Applications $@
-	rm -rf $(DIST_PATH)
+#	productbuild --timestamp --sign "Developer ID Installer: Renaud Blanch (J6M3684Y6M)" --identifier $(IDENTIFIER) --version $(VERSION) --component $^ /Applications $@
+#	xcrun notarytool submit --keychain-profile 'NotarizationProfile' --wait $@
+#	xcrun stapler staple $@
+
+
+archive:
+	hg archive -r $(VERSION) -t tbz2 $@
 
 
 clean:
-	-rm -rf $(app) $(src) $(dist) $(icon) $(iconset) $(DIST_PATH)
+	-rm -rf $(dist) $(app) $(dev) $(icon) $(iconset) $(objc) $(venv)
